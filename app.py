@@ -44,7 +44,7 @@ st.caption("Ask about your vehicle. Answers are grounded in the owner's "
            "manual, with a page citation.")
 
 # --- example starter questions ----------------------------------------------
-if not st.session_state.messages:
+if not st.session_state.messages and "pending" not in st.session_state:
     st.write("Try one of these:")
     examples = [
         "How do I set the cruise control?",
