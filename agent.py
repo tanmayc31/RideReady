@@ -11,7 +11,6 @@ The model decides when to call the retrieve_manual tool -> that tool-call
 decision is the ReAct / action-vs-response pattern for Assignment 4.
 """
 
-import os
 import warnings
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI

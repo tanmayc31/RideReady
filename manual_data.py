@@ -7,7 +7,6 @@ and a retrieve() function that embeds the question, embeds each chunk, and
 returns the closest chunk by cosine similarity. This is the real RAG layer.
 """
 
-import os
 import numpy as np
 from openai import OpenAI
 from dotenv import load_dotenv
