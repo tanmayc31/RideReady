@@ -103,12 +103,20 @@ RESPONSE:
 # ---------------------------------------------------------------------------
 # The retrieval TOOL. The model chooses whether to call this (ReAct pattern).
 # ---------------------------------------------------------------------------
+ACTIVE_VEHICLE = "2023 Toyota Camry"
+
 @tool
 def retrieve_manual(question: str) -> str:
     """Search the owner's manual for text relevant to the driver's question.
     Returns the most relevant manual excerpts (up to 3 candidates) with their
     section names and page numbers, or a note if nothing relevant is found."""
-    results = manual_data.retrieve(question, top_k=3)
+    results = manual_data.retrieve(question, top_k=3, vehicle=ACTIVE_VEHICLE)
+    # Scoped retrieval: if no chunk matches the active vehicle, retrieval returns
+    # an empty list -> tell the model so it takes its safe "not in manual" branch
+    # instead of answering with another vehicle's content.
+    if not results:
+        return ("NO_RELEVANT_CONTEXT_FOUND. No manual is indexed for this "
+                "vehicle, so there is no context to answer from.")
     top_score = results[0][0]
     # Confidence floor: if even the best match is weak, tell the model so it
     # triggers its step-4 "not in manual" branch instead of forcing an answer.

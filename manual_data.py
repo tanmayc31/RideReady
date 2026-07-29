@@ -86,14 +86,26 @@ def _cosine(a, b):
 _CHUNK_VECTORS = [_embed(c["text"]) for c in CHUNKS]
 
 
-def retrieve(question, top_k=1):
+def retrieve(question, top_k=1, vehicle=None):
     """
     Embed the question, compare against every chunk, return the top_k closest
     chunks along with their similarity score.
+
+    If `vehicle` is given (e.g. "2023 Toyota Camry"), only chunks whose
+    year/make/model all appear in that string are scored. This scopes retrieval
+    to the correct vehicle so a query about another car cannot match this car's
+    chunks. If no chunk matches the vehicle, an empty list is returned, which
+    the agent treats as "not in this manual" (a safe decline).
     """
     q_vec = _embed(question)
     scored = []
     for chunk, vec in zip(CHUNKS, _CHUNK_VECTORS):
+        if vehicle is not None:
+            v = vehicle.lower()
+            if not (chunk["year"].lower() in v
+                    and chunk["make"].lower() in v
+                    and chunk["model"].lower() in v):
+                continue  # skip chunks that aren't for this vehicle
         scored.append((_cosine(q_vec, vec), chunk))
     scored.sort(key=lambda x: x[0], reverse=True)
     return scored[:top_k]
