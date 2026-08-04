@@ -2,16 +2,18 @@
 app.py
 Step 4 of RideReady: the Streamlit chat UI.
 
-This is just a face on top of agent.py. It calls ask() for every user
-message, keeps the conversation on screen, and preserves memory across turns
-in a session (so the two-turn brake-light demo works right in the browser).
+A face on top of agent.py. It calls ask() for every user message, keeps the
+conversation on screen, preserves memory across turns, reads answers aloud
+(TTS), and accepts voice questions (Whisper via a mic button).
 
 Run with:  streamlit run app.py
 """
 
+import base64
 import uuid
 
 import streamlit as st
+from streamlit_mic_recorder import mic_recorder
 
 import agent  # our step-3 LangChain agent
 
@@ -20,14 +22,18 @@ st.set_page_config(page_title="RideReady", page_icon="🚗")
 # --- session state -----------------------------------------------------------
 # messages: the visible chat history (list of {role, content})
 # thread_id: a unique id so the agent's memory groups this conversation
+# vehicle:   the active vehicle, used to scope retrieval
+# last_mic_id: the id of the last transcribed recording (avoids re-transcribing)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
 if "vehicle" not in st.session_state:
     st.session_state.vehicle = "2023 Toyota Camry"
+if "last_mic_id" not in st.session_state:
+    st.session_state.last_mic_id = None
 
-# --- sidebar: vehicle select + reset ---------------------------------------
+# --- sidebar: vehicle select + reset ----------------------------------------
 VEHICLES = ["2023 Toyota Camry", "2022 Honda Accord"]
 
 with st.sidebar:
@@ -53,11 +59,10 @@ with st.sidebar:
     if st.button("Reset conversation"):
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.last_mic_id = None
         st.rerun()
 
     st.session_state.voice_on = st.toggle("🔊 Read answers aloud", value=True)
-
-
 
 # --- header ------------------------------------------------------------------
 st.title("🚗 RideReady")
@@ -85,8 +90,9 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- get input: either a clicked example or typed text ----------------------
+# --- get input: typed text, clicked example, or voice -----------------------
 prompt = st.chat_input(f"Ask about your {st.session_state.vehicle}...")
+
 if "pending" in st.session_state:
     prompt = st.session_state.pop("pending")
 
@@ -107,11 +113,10 @@ if prompt:
             )
         st.markdown(answer)
 
-        # Speak the answer aloud with a synced "reading aloud" indicator.        
+        # Speak the answer aloud with a synced "reading aloud" indicator.
         if st.session_state.get("voice_on", True):
-            import base64
-            audio = agent.speak(answer)
-            b64 = base64.b64encode(audio).decode()
+            audio_bytes = agent.speak(answer)
+            b64 = base64.b64encode(audio_bytes).decode()
             st.iframe(
                 f"""
                 <div style="display:flex; align-items:center; gap:10px;
@@ -145,3 +150,19 @@ if prompt:
             )
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
+
+# --- voice input: mic button, rendered LAST so it flows after the answer ----
+st.caption("🎤 Or ask by voice:")
+audio = mic_recorder(
+    start_prompt="🎤 Speak",
+    stop_prompt="🔴 Recording… (click to stop)",
+    key="mic",
+    format="wav",
+)
+
+if audio and audio.get("id") != st.session_state.get("last_mic_id"):
+    st.session_state.last_mic_id = audio["id"]
+    with st.spinner("Transcribing..."):
+        text = agent.transcribe(audio["bytes"])
+    st.session_state.pending = text
+    st.rerun()

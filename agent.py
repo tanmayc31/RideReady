@@ -197,6 +197,7 @@ _tts_client = _OpenAI()
 
 import re as _re
 
+
 def speak(text: str) -> bytes:
     """Convert answer text to spoken MP3 audio bytes via OpenAI TTS.
     Strips labels (Answer:/Steps:/Severity:/Source:) and the Source line so
@@ -217,6 +218,17 @@ def speak(text: str) -> bytes:
         model="tts-1", voice="alloy", input=clean or text,
     )
     return resp.content
+
+def transcribe(audio_bytes: bytes) -> str:
+    """Convert recorded audio (bytes) to text via OpenAI Whisper."""
+    import io
+    buf = io.BytesIO(audio_bytes)
+    buf.name = "question.wav"  # Whisper needs a filename hint
+    resp = _tts_client.audio.transcriptions.create(
+        model="whisper-1",
+        file=buf,
+    )
+    return resp.text
 
 # ---------------------------------------------------------------------------
 # Run this file directly (python agent.py) to test the agent in isolation,

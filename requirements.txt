@@ -6,3 +6,4 @@ langgraph
 numpy
 python-dotenv
 pypdf
+streamlit-mic-recorder
