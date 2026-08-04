@@ -13,3 +13,5 @@ __pycache__/
 
 # manuals (large PDFs — kept local, index is committed instead)
 manuals/*.pdf
+
+*.mp3

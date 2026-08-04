@@ -173,7 +173,7 @@ _agent = create_react_agent(
 )
 
 
-def ask(question: str, thread_id: str = "demo", vehicle: str = None):
+def ask(question: str, thread_id: str = "demo", vehicle: str | None = None):
     """Send one driver question through the agent. thread_id groups a
     conversation so follow-ups (e.g. 'it's red') remember the prior turn.
     vehicle (e.g. '2022 Honda Accord') scopes retrieval to that car."""
@@ -187,6 +187,36 @@ def ask(question: str, thread_id: str = "demo", vehicle: str = None):
     )
     return result["messages"][-1].content
 
+# ---------------------------------------------------------------------------
+# Text-to-speech: turn an answer into spoken audio (OpenAI TTS).
+# Returns raw MP3 bytes that Streamlit can play with st.audio.
+# ---------------------------------------------------------------------------
+from openai import OpenAI as _OpenAI
+
+_tts_client = _OpenAI()
+
+import re as _re
+
+def speak(text: str) -> bytes:
+    """Convert answer text to spoken MP3 audio bytes via OpenAI TTS.
+    Strips labels (Answer:/Steps:/Severity:/Source:) and the Source line so
+    the spoken version sounds natural, not like it's reading a form."""
+    spoken = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        # Skip the Source citation entirely — not useful spoken aloud
+        if stripped.lower().startswith("source:"):
+            continue
+        # Remove the leading labels but keep the content after them
+        stripped = _re.sub(r"^(Answer|Steps|Severity):\s*", "", stripped,
+                           flags=_re.IGNORECASE)
+        if stripped:
+            spoken.append(stripped)
+    clean = " ".join(spoken)
+    resp = _tts_client.audio.speech.create(
+        model="tts-1", voice="alloy", input=clean or text,
+    )
+    return resp.content
 
 # ---------------------------------------------------------------------------
 # Run this file directly (python agent.py) to test the agent in isolation,

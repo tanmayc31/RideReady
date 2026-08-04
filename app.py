@@ -55,6 +55,10 @@ with st.sidebar:
         st.session_state.thread_id = str(uuid.uuid4())
         st.rerun()
 
+    st.session_state.voice_on = st.toggle("🔊 Read answers aloud", value=True)
+
+
+
 # --- header ------------------------------------------------------------------
 st.title("🚗 RideReady")
 st.caption(
@@ -102,5 +106,42 @@ if prompt:
                 vehicle=st.session_state.vehicle,
             )
         st.markdown(answer)
+
+        # Speak the answer aloud with a synced "reading aloud" indicator.        
+        if st.session_state.get("voice_on", True):
+            import base64
+            audio = agent.speak(answer)
+            b64 = base64.b64encode(audio).decode()
+            st.iframe(
+                f"""
+                <div style="display:flex; align-items:center; gap:10px;
+                     font-family:sans-serif; color:#3A5A7A; font-size:14px;">
+                  <button id="btn" style="border:1px solid #3A5A7A;
+                     background:#fff; color:#3A5A7A; border-radius:6px;
+                     padding:2px 10px; cursor:pointer; font-size:14px;">
+                     ⏸ Pause</button>
+                  <span id="ind" style="display:none; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%;
+                       background:#3A5A7A; display:inline-block;
+                       animation:blink 1s infinite;"></span>
+                    🔊 Reading aloud…
+                  </span>
+                </div>
+                <style>@keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}</style>
+                <audio id="a" autoplay>
+                  <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+                <script>
+                  const a = document.getElementById("a");
+                  const ind = document.getElementById("ind");
+                  const btn = document.getElementById("btn");
+                  a.onplay  = () => {{ ind.style.display = "flex"; btn.innerHTML = "⏸ Pause"; }};
+                  a.onpause = () => {{ ind.style.display = "none"; btn.innerHTML = "▶ Play"; }};
+                  a.onended = () => {{ ind.style.display = "none"; btn.innerHTML = "▶ Play"; }};
+                  btn.onclick = () => {{ a.paused ? a.play() : a.pause(); }};
+                </script>
+                """,
+                height=40,
+            )
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
