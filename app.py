@@ -24,12 +24,27 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
+if "vehicle" not in st.session_state:
+    st.session_state.vehicle = "2023 Toyota Camry"
 
-# --- sidebar: vehicle profile + reset ---------------------------------------
+# --- sidebar: vehicle select + reset ---------------------------------------
+VEHICLES = ["2023 Toyota Camry", "2022 Honda Accord"]
+
 with st.sidebar:
     st.header("Vehicle")
-    st.write("**2023 Toyota Camry**")
-    st.caption("Owner's Manual OM06259U")
+    selected = st.selectbox(
+        "Select your vehicle",
+        VEHICLES,
+        index=VEHICLES.index(st.session_state.get("vehicle", VEHICLES[0])),
+    )
+    # If the user switches vehicles, reset the conversation so memory doesn't
+    # carry over answers from the previous car.
+    if selected != st.session_state.get("vehicle"):
+        st.session_state.vehicle = selected
+        st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.rerun()
+    st.caption(f"Answers scoped to the {selected} owner's manual.")
     st.divider()
     st.caption(
         "Memory is resettable by design. Resetting clears this "
@@ -42,8 +57,10 @@ with st.sidebar:
 
 # --- header ------------------------------------------------------------------
 st.title("🚗 RideReady")
-st.caption("Ask about your vehicle. Answers are grounded in the owner's "
-           "manual, with a page citation.")
+st.caption(
+    "Ask about your vehicle. Answers are grounded in the owner's "
+    "manual, with a page citation."
+)
 
 # --- example starter questions ----------------------------------------------
 if not st.session_state.messages and "pending" not in st.session_state:
@@ -65,7 +82,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # --- get input: either a clicked example or typed text ----------------------
-prompt = st.chat_input("Ask about your 2023 Toyota Camry...")
+prompt = st.chat_input(f"Ask about your {st.session_state.vehicle}...")
 if "pending" in st.session_state:
     prompt = st.session_state.pop("pending")
 
@@ -79,7 +96,11 @@ if prompt:
     # get the agent's answer, reusing the session's memory thread
     with st.chat_message("assistant"):
         with st.spinner("Checking the manual..."):
-            answer = agent.ask(prompt, thread_id=st.session_state.thread_id)
+            answer = agent.ask(
+                prompt,
+                thread_id=st.session_state.thread_id,
+                vehicle=st.session_state.vehicle,
+            )
         st.markdown(answer)
 
     st.session_state.messages.append({"role": "assistant", "content": answer})

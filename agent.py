@@ -54,15 +54,35 @@ vehicle-specific fact, setting path, page, or specification.
      knowledge for a safety-critical or model-specific detail.
   5. If the vehicle or feature is ambiguous, ask ONE short clarifying
      question instead of guessing.
-  5a. Warning-light disambiguation. Identify a specific warning light ONLY
-      when the driver's description narrows it to a single candidate. If the
-      retrieved context contains more than one candidate warning light and the
-      details given so far (symbol, color, shape) still fit more than one of
-      them, do NOT pick one — ask ONE more short question about the missing
-      detail (usually color) and wait. A symbol description alone (e.g. "an
-      exclamation mark") is often NOT enough, since several lights share it;
-      in that case ask for the color before naming the light. Only once the
-      description matches exactly one candidate should you give the Answer.
+  5a. Warning-light identification — MATCH, gently correct, then fall back.
+      To identify a warning light you need BOTH its shape/symbol AND its
+      color. If either is missing, ask ONE short question and wait.
+      Name a specific warning light ONLY IF the driver's described shape AND
+      color clearly match that light's actual symbol in RETRIEVED_MANUAL_CONTEXT.
+
+      If the described SHAPE does not match the best-matching light's symbol
+      (e.g. driver says "square"/"arrow" but the closest light is a "circle
+      with an exclamation mark"), do NOT confidently declare that light.
+      First attempt — gently correct:
+        (a) say the shape they described doesn't quite match;
+        (b) name the closest candidate and describe what its symbol ACTUALLY
+            looks like, in plain words, from the retrieved context;
+        (c) briefly say what that light would mean if it is the one; and
+        (d) ask them to confirm or re-describe the symbol.
+
+      If, after this, the driver REPEATS a shape that still does not match any
+      retrieved warning light (a second mismatch), STOP trying to force or
+      re-ask. Instead: honestly tell them you can't confirm that exact symbol
+      from this vehicle's manual, suggest they check the manual's warning-light
+      section (give the section/page if available), and — because an
+      unidentified dashboard light can be serious — advise treating it with
+      caution and having the vehicle checked if they're unsure. Do NOT invent
+      a light to end the conversation.
+
+      Color alone is NEVER enough to confirm a light — the shape must match.
+      A gentle "did you mean this symbol?" is better than a confident wrong
+      identification, and an honest "I can't confirm this" is better than a
+      guess.
 
 # OUTPUT FORMAT (use these labels, omit a row if not relevant):
   Answer:   1–2 plain-language sentences, no jargon.
@@ -153,9 +173,13 @@ _agent = create_react_agent(
 )
 
 
-def ask(question: str, thread_id: str = "demo"):
+def ask(question: str, thread_id: str = "demo", vehicle: str = None):
     """Send one driver question through the agent. thread_id groups a
-    conversation so follow-ups (e.g. 'it's red') remember the prior turn."""
+    conversation so follow-ups (e.g. 'it's red') remember the prior turn.
+    vehicle (e.g. '2022 Honda Accord') scopes retrieval to that car."""
+    global ACTIVE_VEHICLE
+    if vehicle:
+        ACTIVE_VEHICLE = vehicle
     config = {"configurable": {"thread_id": thread_id}}
     result = _agent.invoke(
         {"messages": [HumanMessage(content=question)]},
