@@ -9,9 +9,10 @@ to the active vehicle. Run `python ingest.py` first to build the index.
 
 import os
 import pickle
+
 import numpy as np
-from openai import OpenAI
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 client = OpenAI()

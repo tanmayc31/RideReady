@@ -10,7 +10,9 @@ Run with:  streamlit run app.py
 """
 
 import uuid
+
 import streamlit as st
+
 import agent  # our step-3 LangChain agent
 
 st.set_page_config(page_title="RideReady", page_icon="🚗")

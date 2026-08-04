@@ -23,12 +23,13 @@ retrieval scoped to the correct vehicle.
 """
 
 import os
-import re
 import pickle
+import re
+
 import numpy as np
 import pypdf
-from openai import OpenAI
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 client = OpenAI()

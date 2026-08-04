@@ -127,8 +127,8 @@ def retrieve_manual(question: str) -> str:
     # Return the top candidates. For a specific question one clearly wins; for
     # a vague question (e.g. "there's a warning light") several candidates come
     # back, which is what lets the model see the ambiguity and ask (step 5a).
-    lines = ["RETRIEVED_MANUAL_CONTEXT — top candidate section(s), most "
-             "relevant first:"]
+    lines = [("RETRIEVED_MANUAL_CONTEXT — top candidate section(s), most "
+             "relevant first:")]
     for i, (score, chunk) in enumerate(results, 1):
         lines.append(
             f"\n[Candidate {i}] (similarity {score:.2f})\n"
