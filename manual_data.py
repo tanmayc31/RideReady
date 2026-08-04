@@ -1,74 +1,38 @@
 """
 manual_data.py
-Step 2 of RideReady: the knowledge base + retrieval.
+RideReady knowledge base + retrieval.
 
-Contains real owner-manual chunks (2023 Toyota Camry, OM06259U) with metadata,
-and a retrieve() function that embeds the question, embeds each chunk, and
-returns the closest chunk by cosine similarity. This is the real RAG layer.
+Loads the pre-built index from manual_index/index.pkl (created by ingest.py)
+and retrieves the closest chunks to a question by cosine similarity, scoped
+to the active vehicle. Run `python ingest.py` first to build the index.
 """
 
+import os
+import pickle
 import numpy as np
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()  # reads OPENAI_API_KEY from the .env file
+load_dotenv()
 client = OpenAI()
 
-EMBED_MODEL = "text-embedding-3-small"  # cheap, fast, good enough for this
+EMBED_MODEL = "text-embedding-3-small"
+INDEX_PATH = os.path.join("manual_index", "index.pkl")
 
 # ---------------------------------------------------------------------------
-# The knowledge base: real text copied from the 2023 Toyota Camry Owner's
-# Manual (OM06259U). Each chunk carries metadata so retrieval stays scoped to
-# the vehicle and the page citation is always available.
+# Load the pre-built index once at import (chunks + their embedding vectors).
 # ---------------------------------------------------------------------------
-CHUNKS = [
-    {
-        "make": "Toyota",
-        "model": "Camry",
-        "year": "2023",
-        "section": "Dynamic Radar Cruise Control - Setting the vehicle speed",
-        "page": 312,
-        "text": (
-            "Setting the vehicle speed (vehicle-to-vehicle distance control mode). "
-            "Press the cruise control main switch to activate the cruise control. "
-            "The dynamic radar cruise control indicator will come on and a message "
-            "will be displayed on the multi-information display. Accelerate or "
-            "decelerate, with accelerator pedal operation, to the desired vehicle "
-            "speed (at or above approximately 20 mph [30 km/h]) and press the "
-            "\"SET\" switch to set the speed. The cruise control \"SET\" indicator "
-            "will come on. The vehicle speed at the moment the switch is released "
-            "becomes the set speed. To change the set speed, press the \"+ RES\" or "
-            "\"- SET\" switch until the desired set speed is displayed. Pressing the "
-            "switch changes the vehicle-to-vehicle distance: Long, Medium, or Short."
-        ),
-    },
-    {
-        "make": "Toyota",
-        "model": "Camry",
-        "year": "2023",
-        "section": "Tire Pressure Warning Light",
-        "page": 532,
-        "text": (
-            "Tire pressure warning light. Indicates the following: low tire pressure "
-            "due to a flat tire; low tire pressure due to natural causes; or the tire "
-            "pressure warning system is malfunctioning. Immediately stop the vehicle "
-            "in a safe place."
-        ),
-    },
-    {
-        "make": "Toyota",
-        "model": "Camry",
-        "year": "2023",
-        "section": "Brake System Warning Light",
-        "page": 528,
-        "text": (
-            "Brake system warning light (red). Indicates that the brake fluid level "
-            "is low; or the brake system is malfunctioning. Immediately stop the "
-            "vehicle in a safe place and contact your Toyota dealer. Continuing to "
-            "drive the vehicle may be dangerous."
-        ),
-    },
-]
+if not os.path.exists(INDEX_PATH):
+    raise FileNotFoundError(
+        f"No index found at {INDEX_PATH}. Run `python ingest.py` first to "
+        f"build it from the PDFs in the manuals/ folder."
+    )
+
+with open(INDEX_PATH, "rb") as f:
+    _data = pickle.load(f)
+
+CHUNKS = _data["chunks"]              # list of {year, make, model, section, page, text}
+_CHUNK_VECTORS = _data["vectors"]     # np.array, one row per chunk
 
 
 def _embed(text):
@@ -80,10 +44,6 @@ def _embed(text):
 def _cosine(a, b):
     """Cosine similarity between two vectors (1.0 = identical direction)."""
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
-
-
-# Embed all chunks once when the module loads, so we don't re-embed every query.
-_CHUNK_VECTORS = [_embed(c["text"]) for c in CHUNKS]
 
 
 def retrieve(question, top_k=1, vehicle=None):
@@ -105,16 +65,12 @@ def retrieve(question, top_k=1, vehicle=None):
             if not (chunk["year"].lower() in v
                     and chunk["make"].lower() in v
                     and chunk["model"].lower() in v):
-                continue  # skip chunks that aren't for this vehicle
+                continue
         scored.append((_cosine(q_vec, vec), chunk))
     scored.sort(key=lambda x: x[0], reverse=True)
     return scored[:top_k]
 
 
-# ---------------------------------------------------------------------------
-# Run this file directly (python manual_data.py) to test retrieval in
-# isolation, before wiring in the agent or the UI.
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     tests = [
         "how do I set adaptive cruise control?",
@@ -122,7 +78,10 @@ if __name__ == "__main__":
         "there's a red brake light on my dash",
     ]
     for q in tests:
-        score, chunk = retrieve(q)[0]
-        print(f"\nQ: {q}")
-        print(f"   -> matched: {chunk['section']} (p.{chunk['page']})  "
-              f"[similarity {score:.3f}]")
+        results = retrieve(q, top_k=1, vehicle="2023 Toyota Camry")
+        if results:
+            score, chunk = results[0]
+            print(f"\nQ: {q}")
+            print(f"   -> {chunk['section']} (p.{chunk['page']})  [sim {score:.3f}]")
+        else:
+            print(f"\nQ: {q}\n   -> no match")

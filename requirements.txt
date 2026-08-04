@@ -5,3 +5,4 @@ langchain-openai
 langgraph
 numpy
 python-dotenv
+pypdf

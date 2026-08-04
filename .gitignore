@@ -10,3 +10,6 @@ __pycache__/
 
 # mac
 .DS_Store
+
+# manuals (large PDFs — kept local, index is committed instead)
+manuals/*.pdf

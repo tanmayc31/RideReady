@@ -12,14 +12,15 @@ decision is the ReAct / action-vs-response pattern for Assignment 4.
 """
 
 import warnings
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.tools import tool
-from langchain_core.messages import SystemMessage, HumanMessage
-from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import InMemorySaver
 
-import manual_data  # our step-2 retrieval module
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import create_react_agent
+
+import manual_data
 
 warnings.filterwarnings("ignore")  # hide harmless LangGraph v1 deprecation notice
 load_dotenv()
