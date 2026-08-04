@@ -324,7 +324,8 @@ def build_index():
         print(f"  embedded {min(start + EMBED_BATCH, len(all_chunks))}/{len(all_chunks)}")
 
     os.makedirs(INDEX_DIR, exist_ok=True)
-    with open(INDEX_PATH, "wb") as f:
+    import gzip
+    with gzip.open(INDEX_PATH, "wb") as f:
         pickle.dump({"chunks": all_chunks, "vectors": np.array(vectors)}, f)
 
     print(f"\nSaved index -> {INDEX_PATH}")

@@ -29,7 +29,9 @@ if not os.path.exists(INDEX_PATH):
         f"build it from the PDFs in the manuals/ folder."
     )
 
-with open(INDEX_PATH, "rb") as f:
+import gzip
+
+with gzip.open(INDEX_PATH, "rb") as f:
     _data = pickle.load(f)
 
 CHUNKS = _data["chunks"]              # list of {year, make, model, section, page, text}
